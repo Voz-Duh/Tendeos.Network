@@ -8,13 +8,17 @@ namespace Tendeos.Network
         public class Process : IProcessingService
         {
             internal Server server;
+            private readonly Action<NetConnection> onConnected;
+            private readonly Action<NetConnection> onDisconnected;
             private readonly ServerCommand[] commands;
             private readonly NetworkSyncSettings networkSyncSettings;
             internal List<NetConnection> connections;
             internal List<int> pulseMessages;
 
-            public Process(ServerCommand[] commands, NetworkSyncSettings networkSyncSettings)
+            public Process(Action<NetConnection> onConnected, Action<NetConnection> onDisconnected,  ServerCommand[] commands, NetworkSyncSettings networkSyncSettings)
             {
+                this.onConnected = onConnected;
+                this.onDisconnected = onDisconnected;
                 this.commands = commands;
                 this.networkSyncSettings = networkSyncSettings;
                 pulseMessages = new List<int>();
@@ -27,10 +31,12 @@ namespace Tendeos.Network
                 connections.Add(connection);
                 Pulse(connection, pulseMessages.Count - 1);
                 Sync(connection);
+                onConnected(connection);
             }
 
             public void ProcessDisconnected(NetConnection connection)
             {
+                onDisconnected(connection);
                 pulseMessages.RemoveAt(connections.IndexOf(connection));
                 connections.Remove(connection);
             }
@@ -165,7 +171,7 @@ namespace Tendeos.Network
             Send(message, type);
         }
 
-        public Server(int port, Process process, bool consoleLog = true) : base(process, consoleLog ? new ConsoleLogger<Server>() : new IgnoreLogger<Server>(), new ServerOptions(port, "Tendeos"))
+        public Server(int port, Process process, string name, bool consoleLog = true) : base(process, consoleLog ? new ConsoleLogger<Server>() : new IgnoreLogger<Server>(), new ServerOptions(port, name))
         {
             process.server = this;
         }

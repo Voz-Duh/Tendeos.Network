@@ -10,11 +10,15 @@ namespace Tendeos.Network
         public class Process : IProcessingService
         {
             internal Client client;
+            private readonly Action onConnected;
+            private readonly Action onDisconnected;
             private readonly ClientCommand[] commands;
             private readonly NetworkSyncSettings networkSyncSettings;
 
-            public Process(ClientCommand[] commands, NetworkSyncSettings networkSyncSettings)
+            public Process(Action onConnected, Action onDisconnected,  ClientCommand[] commands, NetworkSyncSettings networkSyncSettings)
             {
+                this.onConnected = onConnected;
+                this.onDisconnected = onDisconnected;
                 this.commands = commands;
                 this.networkSyncSettings = networkSyncSettings;
             }
@@ -22,10 +26,12 @@ namespace Tendeos.Network
             public void ProcessConnected(NetConnection connection)
             {
                 client.connection = connection;
+                onConnected();
             }
 
             public void ProcessDisconnected(NetConnection connection)
             {
+                onDisconnected();
                 client.connection = null;
                 client.Stop();
             }
@@ -75,10 +81,11 @@ namespace Tendeos.Network
             Send(message, connection);
         }
 
-        public Client(string address, int port, Process process, bool consoleLog = true) : base(process, consoleLog ? new ConsoleLogger<Client>() : new IgnoreLogger<Client>(), new ClientOptions(address, port, "Tendeos"))
+        public Client(string address, int port, Process process, string name, bool consoleLog = true) : base(process, consoleLog ? new ConsoleLogger<Client>() : new IgnoreLogger<Client>(), new ClientOptions(address, port, name))
         {
             process.client = this;
         }
+        
         public override void Start()
         {
             SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
